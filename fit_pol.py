@@ -148,11 +148,9 @@ if __name__ == "__main__":
     print('Inserire il range in cui far variare i parametri')
 
     a_min = np.zeros(num_par)
-    for i in range(num_par):
-        a_min[i] = float(input(f'minimo per il parametro a{abs(i-gra_pol)}:'))
-
     a_max = np.zeros(num_par)
     for i in range(num_par):
+        a_min[i] = float(input(f'minimo  per il parametro a{abs(i-gra_pol)}:'))
         a_max[i] = float(input(f'massimo per il parametro a{abs(i-gra_pol)}:'))
 
     c = [a_min, a_max]
