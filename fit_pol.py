@@ -138,11 +138,13 @@ def test(x, y, dy, N, nmax, range_params, num_par):
     #np.log(np.sum(np.exp(logP)))
     Z = logsumexp(logP)
 
+    #divido per radice d N-1 perchè è la regola che
+    #in genere si usa per il numero di bin degli istogrammi
     for i in range(num_par):
-        dx = (range_params[i, 1] - range_params[i, 0])/N
+        dx = (range_params[i, 1] - range_params[i, 0])/np.sqrt(N-1)
         Z += np.log(dx)
 
-    return popt, np.mean(logP)
+    return popt, Z
 
 
 
