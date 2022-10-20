@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-
+from scipy.special import logsumexp
 
 def polinomio(p, x, num_par):
     """
@@ -109,6 +109,7 @@ def test(x, y, dy, N, nmax, range_params, num_par):
     for i in range(N):
         logP[i] = log_likelihood(x, y, dy, Params[i,:], num_par)
 
+
     #grafici in casi facili
     if num_par == 2:
         fig = plt.figure(0)
@@ -138,13 +139,11 @@ def test(x, y, dy, N, nmax, range_params, num_par):
     #np.log(np.sum(np.exp(logP)))
     Z = logsumexp(logP)
 
-    #divido per radice d N-1 perchè è la regola che
-    #in genere si usa per il numero di bin degli istogrammi
     for i in range(num_par):
-        dx = (range_params[i, 1] - range_params[i, 0])/np.sqrt(N-1)
+        dx = (range_params[i, 1] - range_params[i, 0])/N
         Z += np.log(dx)
 
-    return popt, Z
+    return popt, Z, c_mh
 
 
 
@@ -170,7 +169,7 @@ if __name__ == "__main__":
     c = c.T[::-1]
 
     n_curve = 3
-    popt, evidence = test(x, y, dy, int(5e4), n_curve, c, num_par)
+    popt, evidence, mm = test(x, y, dy, int(5e4), n_curve, c, num_par)
     print(f"log Evidence = {evidence}")
 
     plt.figure(1)
