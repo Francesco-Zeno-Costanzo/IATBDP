@@ -143,7 +143,7 @@ def test(x, y, dy, N, nmax, range_params, num_par):
         dx = (range_params[i, 1] - range_params[i, 0])/N
         Z += np.log(dx)
 
-    return popt, Z, c_mh
+    return popt, Z
 
 
 
@@ -169,7 +169,7 @@ if __name__ == "__main__":
     c = c.T[::-1]
 
     n_curve = 3
-    popt, evidence, mm = test(x, y, dy, int(5e4), n_curve, c, num_par)
+    popt, evidence = test(x, y, dy, int(5e4), n_curve, c, num_par)
     print(f"log Evidence = {evidence}")
 
     plt.figure(1)
