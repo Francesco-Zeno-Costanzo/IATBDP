@@ -246,6 +246,7 @@ if __name__ == "__main__":
     termal = int(1e2)    #misure da scartare per la termalizzazione
     
     n = misure + termal  #numeero di misure totale da eseguire
+    print(f'Lunghezza catena inizale = {n}')
     
     prior_args = ()                 #parametri della prior
     likelihood_args = (3, 0.5)      #parametri della likelihood
@@ -262,7 +263,7 @@ if __name__ == "__main__":
     samples = metropolis_hastings(
               log_posterior, gaussian_proposal, rng, n=n,
               target_args=target_args,
-              proposal_args=(0, 1)     #se vuota, argomenti di defaut
+              proposal_args=(0, 1)     #se vuota -> argomenti di defaut
               )
     #calcolo auto-correlazione
     acf = autocorrelation(samples)
@@ -292,6 +293,7 @@ if __name__ == "__main__":
     
     #correlazione, prendo un elemento ogni ac_time
     samples = samples[::ac_time]
+    print(f'Lunghezza catena finale = {len(samples)}')
     
     plt.figure(2)
     plt.title('cleaned chain')
