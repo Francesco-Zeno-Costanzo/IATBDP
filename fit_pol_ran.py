@@ -1,3 +1,6 @@
+"""
+fit with random number
+"""
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import logsumexp
