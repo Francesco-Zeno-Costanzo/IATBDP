@@ -25,7 +25,7 @@ def SIRD(t, Y, beta, gamma, delta):
     Y_dot : 1darray
         array of equations
     """
-    #incognite
+    #vettore incognite
     S, I, R, D = Y
     #equazioni da risolvere
     S_dot = -beta*I*S/N
@@ -107,7 +107,7 @@ if __name__ == '__main__':
     num_steps = 100000
     tf = 100
     #condizioni iniziali
-    N = 1000
+    N  = 1000
     I0 = 3
     R0 = 0
     D0 = 0
