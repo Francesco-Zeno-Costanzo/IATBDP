@@ -70,7 +70,6 @@ def samplig(x, D, bound):
     step = 0.1     #initial step of the algorithm, to set
     accept = 0     #number of accepted moves
     reject = 0     #number of rejected moves
-    trial  = 0     #numero tentativi fatti
 
     while True:
         #array initialization
@@ -91,11 +90,10 @@ def samplig(x, D, bound):
             reject += 1
         #if greater we accept
         if new_sample[D] > logLmin:
-            trial += 1
             accept += 1
             point[:D] = new_sample[:D]
 
-            if trial > 40:#ACHTUNG
+            if accept > 40:#ACHTUNG
                 """
                 the samples must be independent. We trust
                 that they are after 40 accepted attempts,
@@ -172,12 +170,12 @@ def nested_samplig(N, D, bound, tau=1e-6, verbose=False):
     # Outermost interval of prior mass
     logwidth = np.log(1.0 - np.exp(-1.0/N))
 
-    iter     = 0   #number of steps
+    Iter     = 0   #number of steps
     rejected = 0   #total rejected steps
     accepted = 0   #total accepted steps
 
     while True:
-        iter += 1                        #we refresh the number of steps
+        Iter += 1                        #we refresh the number of steps
         prior_mass.append(logwidth)      #we keep the integration variable
 
         Lw_idx = np.argmin(grid[:, D])   #index for the parameters with the worst likelihood, i.e. the smallest one
@@ -204,9 +202,9 @@ def nested_samplig(N, D, bound, tau=1e-6, verbose=False):
         if verbose :
             #evidence error computed each time for the print
             error = np.sqrt(np.exp(logH)/N)
-            print(f"Iter = {iter} acceptance = {accepted/(accepted+rejected):.3f} logZ = {logZ:.3f} error_logZ = {error:.3f} H = {np.exp(logH):.3f} \r", end="")
+            print(f"Iter = {Iter} acceptance = {accepted/(accepted+rejected):.3f} logZ = {logZ:.3f} error_logZ = {error:.3f} H = {np.exp(logH):.3f} \r", end="")
 
-        if iter > 3:
+        if Iter > 3:
             if abs((logZ_list[-1] - logZ_list[-2])/logZ_list[-2]) < tau :
                 break
 
@@ -222,7 +220,7 @@ def nested_samplig(N, D, bound, tau=1e-6, verbose=False):
             "prior_mass"      : np.array(prior_mass),
             "number_acc"      : accepted,
             "number_rej"      : rejected,
-            "number_steps"    : iter,
+            "number_steps"    : Iter,
             "log_information" : np.array(logH_list),
             "list_evidence"   : np.array(logZ_list)
     }
@@ -273,7 +271,7 @@ if __name__ == "__main__":
     #number of points
     N = int(2e3)
     #dimesion
-    D = 3
+    D = 50
     #integration limit, in these units it is the number of standard deviations
     bound = 6
 
@@ -292,7 +290,8 @@ if __name__ == "__main__":
     number_iter     = NS["number_steps"]
     log_information = NS["log_information"]
     list_evidence   = NS["list_evidence"]
-
+    
+    print() #print for problem in refresh of verbose in ubuntu shell
     print(f"Evidence sampling    = {evidence:.3f} +- {error_evidence:.3f}")
     print(f"Theoretical evidence = {-D*np.log(2*bound):.3f}")
 
@@ -304,5 +303,5 @@ if __name__ == "__main__":
     end = time.time() - start
 
     print(f"Elapsed time = {end//60:.0f} min and {end%60:.0f} s")
-
-    plot_hist_par(prior_param, posterior_param, D, show=True)
+    
+    plot_hist_par(prior_param, posterior_param, D, save=True)
