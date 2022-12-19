@@ -77,11 +77,11 @@ def samplig(x, D, bound):
         #loop over the components
         for i in range(D):
             #we sample a trial variable
-            new_sample[:D][i] = point[i] + np.random.uniform(-step, step)
+            new_sample[i] = point[i] + np.random.uniform(-step, step)
             #if it is out of bound...
-            while np.abs(new_sample[:D][i]) > bound:
+            while np.abs(new_sample[i]) > bound:
                 #...we resample the variable
-                new_sample[:D][i] = point[i] + np.random.uniform(-step, step)
+                new_sample[i] = point[i] + np.random.uniform(-step, step)
         #computation of the likelihood associated to the new point
         new_sample[D] = log_likelihood(new_sample[:D], D)
 
@@ -107,9 +107,9 @@ def samplig(x, D, bound):
         # We change the step to go towards a 50% acceptance
         if accept != 0 and reject != 0:
             if accept > reject :
-                step *= np.exp(1.0 / accept);
+                step *= np.exp(1.0 / accept)
             if accept < reject :
-                step /= np.exp(1.0 / reject);
+                step /= np.exp(1.0 / reject)
 
     return new_sample, accept, reject
 
@@ -205,7 +205,7 @@ def nested_samplig(N, D, bound, tau=1e-6, verbose=False):
             print(f"Iter = {Iter} acceptance = {accepted/(accepted+rejected):.3f} logZ = {logZ:.3f} error_logZ = {error:.3f} H = {np.exp(logH):.3f} \r", end="")
 
         if Iter > 3:
-            if abs((logZ_list[-1] - logZ_list[-2])/logZ_list[-2]) < tau :
+            if abs(logZ_list[-1] - logZ_list[-2]) < tau :
                 break
 
     #evidence error
@@ -271,7 +271,7 @@ if __name__ == "__main__":
     #number of points
     N = int(2e3)
     #dimesion
-    D = 50
+    D = 3
     #integration limit, in these units it is the number of standard deviations
     bound = 6
 
@@ -304,4 +304,5 @@ if __name__ == "__main__":
 
     print(f"Elapsed time = {end//60:.0f} min and {end%60:.0f} s")
     
-    plot_hist_par(prior_param, posterior_param, D, save=True)
+    plot_hist_par(prior_param, posterior_param, D, show=True)
+    
