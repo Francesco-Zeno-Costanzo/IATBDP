@@ -29,6 +29,6 @@ Implementazione del nested sampling per integrare una gaussiana D dimensionale. 
 
 Non vi sorprenderà sapere che è lo stesso di quello sopra ma scritto in julia. Questo perchè il tempo impiegato da julia è nettamente inferiore (Nel caso peggiore, 30 minuti vs 20 secondi) Me cojoni come dicono i saggi. Leggere attentamente i commenti ci sono dei caveat, tranquilli sono gli stessi di sopra.
 
-## plot_hit.py
+## plot_hist.py
 
 Permette di realizzare i grafici, contenuti nella cartella plot\_D\_50 leggendo i dati creati dal codice julia. Voi direte: ma julia può fare i plot da sè, e avete pure ragione, ma a me non piace
