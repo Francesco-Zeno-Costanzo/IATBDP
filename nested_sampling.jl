@@ -117,10 +117,10 @@ function sampling(x, D, bound, thr)
             if accept > thr #ACHTUNG
                 #=
                 the samples must be independent. We trust
-                that they are after 17 accepted attempts,
+                that they are after thr accepted attempts,
                 but we should compute the correlation of the D
                 chains and the autocorrelation time in order
-                to know what to write instead of 17, which is
+                to know what to write instead of thr, which is
                 computationally expensive
                 =#
                 break
