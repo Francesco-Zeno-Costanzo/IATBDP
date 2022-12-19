@@ -11,7 +11,7 @@ Codice che prova a fittare dei dati, contenuti in data.txt con un modello polino
 
 ## lupi.py
 
-Anvendo visto M lupi, taggati r ed in seguito "variabile", di cui "variabile" erano già taggati, si stima la popolazione totale.
+Anvendo visto M lupi, avendoli taggati e riconoscendo r lupi taggati su n osservati in un secondo momento, si stima la popolazione totale N.
 
 ## metropolis_hastings.py
 
