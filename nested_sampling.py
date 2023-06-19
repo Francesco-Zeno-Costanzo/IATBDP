@@ -7,7 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def log_likelihood(x, D, vec=False):
+def log_likelihood(x, D):
     """
     log likelihood of gaussian
 
@@ -30,15 +30,19 @@ def log_likelihood(x, D, vec=False):
         float if vec = False
     """
     mu = 0
-    if vec:
-        likelihood = [- 0.5*D*np.log(2*np.pi) - 0.5*np.dot((v-mu), (v-mu)) for v in x]
-    else:
-        likelihood =  - 0.5*D*np.log(2*np.pi) - 0.5*np.dot((x-mu), (x-mu))
+    likelihood =  - 0.5*D*np.log(2*np.pi) - 0.5*np.dot((x-mu), (x-mu))
 
     return likelihood
 
 
-def samplig(x, D, bound):
+def prior(x, bound):
+    if x < -bound or x > bound:
+        return 0
+    else :
+        return 1
+
+
+def samplig(x, D, bound, step):
     """
     Sampling a new point of parameter space from
     a uniform distribution as proposal with the
@@ -67,7 +71,7 @@ def samplig(x, D, bound):
 
     logLmin = x[D] #worst likelihood
     point = x[:D]  #point in the parameter space
-    step = 0.1     #initial step of the algorithm, to set
+    #step = 0.1     #initial step of the algorithm, to set
     accept = 0     #number of accepted moves
     reject = 0     #number of rejected moves
 
@@ -75,13 +79,22 @@ def samplig(x, D, bound):
         #array initialization
         new_sample = np.zeros(D+1)
         #loop over the components
+        #"""
         for i in range(D):
             #we sample a trial variable
-            new_sample[i] = point[i] + np.random.uniform(-step, step)
+            #new_sample[i] = np.random.normal(point[i], step[i])
+            try_sample = point[i] + np.random.uniform(-step[i], step[i])
+            r = prior(try_sample, bound)/prior(new_sample[i], bound)
+            if np.random.uniform() < r:
+                new_sample[i] = try_sample
+
             #if it is out of bound...
-            while np.abs(new_sample[i]) > bound:
+            #while np.abs(new_sample[i]) > bound:
                 #...we resample the variable
-                new_sample[i] = point[i] + np.random.uniform(-step, step)
+            #    new_sample[i] = np.random.normal(point[i], step[i])
+                #new_sample[i] = point[i] + np.random.uniform(-step[i], step[i])
+        #"""
+        #new_sample[:D] = np.random.uniform(-bound, bound, size=D)
         #computation of the likelihood associated to the new point
         new_sample[D] = log_likelihood(new_sample[:D], D)
 
@@ -105,11 +118,11 @@ def samplig(x, D, bound):
                 break
 
         # We change the step to go towards a 50% acceptance
-        if accept != 0 and reject != 0:
-            if accept > reject :
-                step *= np.exp(1.0 / accept)
-            if accept < reject :
-                step /= np.exp(1.0 / reject)
+        #if accept != 0 and reject != 0:
+        if accept > reject :
+            step *= np.exp(1.0 / accept)
+        if accept < reject :
+            step /= np.exp(1.0 / reject)
 
     return new_sample, accept, reject
 
@@ -156,6 +169,8 @@ def nested_samplig(N, D, bound, tau=1e-6, verbose=False):
     prior_mass = [] #integration variable
     logH_list  = [] #we keep the information
     logZ_list  = [] #we keep the evidence
+    Sample_pts = []
+    logLsa_pts = []
 
     logH = -np.inf  # ln(Information, initially 0)
     logZ = -np.inf  # ln(Evidence Z, initially 0)
@@ -166,7 +181,8 @@ def nested_samplig(N, D, bound, tau=1e-6, verbose=False):
     #initialization of the parameters' values
     grid[:, :D] = prior_sample
     #likelihood initialization
-    grid[:,  D] = log_likelihood(prior_sample, D, vec=True)
+    for i in range(N):
+        grid[i,  D] = log_likelihood(prior_sample[i,:], D)
     # Outermost interval of prior mass
     logwidth = np.log(1.0 - np.exp(-1.0/N))
 
@@ -191,12 +207,67 @@ def nested_samplig(N, D, bound, tau=1e-6, verbose=False):
         logH = np.logaddexp(logH, logwidth + logLw - logZ + np.log(logLw - logZ))
         logH_list.append(logH)
 
-        #new sample used to replace the points we have to delete
-        new_sample, acc, rej = samplig(grid[Lw_idx], D, bound)
-        accepted += acc #we refresh the total accepted steps
-        rejected += rej #we refresh the total rejected steps
+        #Sample_pts.append(grid[Lw_idx, 0:-1])
+        #logLsa_pts.append(grid[Lw_idx, 1])
 
-        grid[Lw_idx] = new_sample #replacement
+        if N>1: # don't kill if n is only 1
+            while True:
+                copy = int(N * np.random.uniform()) % N  # force 0 <= copy < n
+                if copy != Lw_idx:
+                    break
+
+        #logLstar = Obj[worst].logL;       # new likelihood constraint sarebbe logLw
+        grid[Lw_idx] = grid[copy];           # overwrite worst object
+
+        #new sample used to replace the points we have to delete
+        sampling_step = np.array([np.std(grid[:, jj]) for jj in range(D)])
+        #new_sample, acc, rej = samplig(grid[Lw_idx], D, bound, sampling_step)
+        #while True:
+        for tt in range(100):
+            acc = 0
+            rej = 0
+            new_sample = np.zeros(D)
+            new_sample = np.copy(grid[Lw_idx, 0:D])
+            for ex in range(300):
+                for i in range(D):
+                #we sample a trial variable
+                    #try_sample = np.random.normal(grid[Lw_idx, i], sampling_step[i])
+                    try_sample = np.random.normal(new_sample[i], sampling_step[i])
+
+                    r = prior(try_sample, bound)/prior(new_sample[i], bound)
+                    if np.random.uniform() < r:
+                        new_sample[i] = try_sample
+                        acc += 1
+                    else :
+                        rej += 1
+                #Sample_pts.append(new_sample)
+                """
+                if acc > rej :
+                    sampling_step[i] *= np.exp(1.0 / acc)
+                if acc < rej :
+                    sampling_step[i] /= np.exp(1.0 / rej)
+                """
+
+                logL_p = log_likelihood(new_sample, D)
+                Sample_pts.append(new_sample)
+                logLsa_pts.append(logL_p)
+                if logL_p > logLw :
+                    grid[Lw_idx, 0:D] = new_sample
+                    grid[Lw_idx, D] = logL_p
+                    accepted += 1
+                    break
+                else :
+                    rejected += 1
+
+            if accepted > rejected :
+                sampling_step *= np.exp(1.0 / accepted)
+            if accepted < rejected :
+                sampling_step /= np.exp(1.0 / rejected)
+
+        #accepted += acc #we refresh the total accepted steps
+        #rejected += rej #we refresh the total rejected steps
+
+        #grid[Lw_idx] = new_sample #replacement
         logwidth -= 1.0/N         #interval shrinking
 
         if verbose :
@@ -204,17 +275,18 @@ def nested_samplig(N, D, bound, tau=1e-6, verbose=False):
             error = np.sqrt(np.exp(logH)/N)
             print(f"Iter = {Iter} acceptance = {accepted/(accepted+rejected):.3f} logZ = {logZ:.3f} error_logZ = {error:.3f} H = {np.exp(logH):.3f} \r", end="")
 
-        if Iter > 3:
-            if abs(logZ_list[-1] - logZ_list[-2]) < tau :
-                break
+        if max(grid[:,D]) + logwidth < np.log(0.001) + logZ:
+            break
 
     #evidence error
     error = np.sqrt(np.exp(logH)/N)
 
+    w = np.exp([ll - logZ for ll in logLsa_pts])
+    w = w/sum(w)
     calc = {
             "evidence"        : logZ,
             "error_lZ"        : error,
-            "posterior"       : grid[:, :D],
+            "posterior"       : np.array(Sample_pts),#grid[:, :D],
             "likelihood"      : grid[:,  D],
             "prior"           : prior_sample,
             "prior_mass"      : np.array(prior_mass),
@@ -222,13 +294,14 @@ def nested_samplig(N, D, bound, tau=1e-6, verbose=False):
             "number_rej"      : rejected,
             "number_steps"    : Iter,
             "log_information" : np.array(logH_list),
-            "list_evidence"   : np.array(logZ_list)
+            "list_evidence"   : np.array(logZ_list),
+            "pesi"            : w
     }
 
     return calc
 
 
-def plot_hist_par(prior, posterior, D, save=False, show=False):
+def plot_hist_par(prior, posterior, w, D, save=False, show=False):
     """
     Plot of posterior vs prior for all parameters
 
@@ -245,15 +318,16 @@ def plot_hist_par(prior, posterior, D, save=False, show=False):
     show : bool, optional
         if True all plots are showed on the screen
     """
-
+    x = np.linspace(-5, 5, 100)
     for pr, ps, k in zip(prior.T, posterior.T, range(D)):
 
         fig = plt.figure(k+1)
         plt.title(f"Confronto per il {k+1}esimo parametro")
         plt.xlabel("bound")
         plt.ylabel("Probability density")
-        plt.hist(pr, bins=int(np.sqrt(N-1)), density=True, histtype='step', color='blue', label='prior')
-        plt.hist(ps, bins=int(np.sqrt(N-1)), density=True, histtype='step', color='black', label="posterior")
+        plt.hist(pr, bins=50, density=True, histtype='step', color='blue', label='prior')
+        plt.hist(ps, bins=50, density=True, weights=w, histtype='step', color='black', label="posterior")
+        plt.plot(x, 1/(2*np.pi)**(1/(2*D)) * np.exp(-x**2/2))
         plt.legend(loc='best')
         plt.grid()
 
@@ -269,11 +343,11 @@ if __name__ == "__main__":
 
     np.random.seed(69420)
     #number of points
-    N = int(2e3)
+    N = int(4e3)
     #dimesion
-    D = 3
+    D = 1
     #integration limit, in these units it is the number of standard deviations
-    bound = 6
+    bound = 5
 
     start = time.time()
 
@@ -290,7 +364,8 @@ if __name__ == "__main__":
     number_iter     = NS["number_steps"]
     log_information = NS["log_information"]
     list_evidence   = NS["list_evidence"]
-    
+    pesi            = NS["pesi"]
+
     print() #print for problem in refresh of verbose in ubuntu shell
     print(f"Evidence sampling    = {evidence:.3f} +- {error_evidence:.3f}")
     print(f"Theoretical evidence = {-D*np.log(2*bound):.3f}")
@@ -303,6 +378,5 @@ if __name__ == "__main__":
     end = time.time() - start
 
     print(f"Elapsed time = {end//60:.0f} min and {end%60:.0f} s")
-    
-    plot_hist_par(prior_param, posterior_param, D, show=True)
-    
+
+    plot_hist_par(prior_param, posterior_param, pesi, D, show=True)
