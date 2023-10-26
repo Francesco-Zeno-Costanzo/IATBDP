@@ -152,7 +152,7 @@ def test(x, y, dy, N, nmax, range_params, num_par):
 
 if __name__ == "__main__":
 
-    x, y = np.loadtxt(r'C:\Users\franc\Documents\GitHub\IATBDP\data.txt', skiprows=1, unpack=True)
+    x, y = np.loadtxt(r'data.txt', skiprows=1, unpack=True)
     dy = np.ones(len(y))
 
     print('fit con polinomio del tipo: a_n * x^n + ... + a_1 * x + a_0')
