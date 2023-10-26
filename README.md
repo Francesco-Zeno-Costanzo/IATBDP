@@ -23,11 +23,11 @@ simulazione modello sird
 
 ## nested_sampling.py
 
-Implementazione del nested sampling per integrare una gaussiana D dimensionale. Leggere attentamente i commenti ci sono dei caveat
+to do
 
 ## nested_sampling.jl
 
-Non vi sorprenderà sapere che è lo stesso di quello sopra ma scritto in julia. Questo perchè il tempo impiegato da julia è nettamente inferiore (Nel caso peggiore, 30 minuti vs 20 secondi) Me cojoni come dicono i saggi. Leggere attentamente i commenti ci sono dei caveat, tranquilli sono gli stessi di sopra.
+to do
 
 ## plot_hist.py
 
