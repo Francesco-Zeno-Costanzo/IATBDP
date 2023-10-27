@@ -1,34 +1,33 @@
 # IATBDP
-repository per codici per il corso di introduzione alla teoria bayesiana della probabilità
+Code repository for the Introduction to Bayesian Probability Theory course
 
-Scritti insieme a Carlo Panu
+Written together with Carlo Panu
 
-# Breve spiegazione dei codci
+# Brief explanation of the codes
 
 ## fit\_pol\_ran.py
 
-Codice che prova a fittare dei dati, contenuti in data.txt con un modello polinomiale cercando i valori ottimali della likelihood calcaloata in un set di parametri estratti uniformemente in un range scelto dall'utente.
+Code that tries to fit the data contained in data.txt with a polynomial model looking for the optimal values ​​of the likelihood calculated in a set of parameters uniformly extracted in a range chosen by the user.
 
 ## lupi.py
 
-Anvendo visto M lupi, avendoli taggati e riconoscendo r lupi taggati su n osservati in un secondo momento, si stima la popolazione totale N.
+Exercise: Having seen M wolves, having tagged them and recognizing r tagged wolves out of n observed at a later time, estimate the total population N.
 
 ## metropolis_hastings.py
 
-Campionamento di una gaussiana tramite algoritmo metropolis-hastings
+Sampling a Gaussian using the metropolis-hastings algorithm
 
 ## SIRD.py
 
-simulazione modello sird
+Simulation of SIRD model
 
 ## nested_sampling.py
 
+Simple code that implements the nested sampling to compute the evidence D-dimensiona gaussian.
+The posterior distributions of the parameters are also calculated.
+It was always assumed that the a priori distribution was uniform according to the indifference principle.
+
+## fit_nested_sampling.jl
+
 to do
 
-## nested_sampling.jl
-
-to do
-
-## plot_hist.py
-
-Permette di realizzare i grafici, contenuti nella cartella plot\_D\_50 leggendo i dati creati dal codice julia. Voi direte: ma julia può fare i plot da sè, e avete pure ragione, ma a me non piace
