@@ -5,7 +5,9 @@ and also the same function as a theoretical model.
 Any changes for other models are not particularly complicated.
 The calculations of the average values ​​of the parameters are calculated starting from the
 various posterior distributions for the sole purpose of carrying out a posterior predictive
-check
+check.
+It was always assumed that the a priori distribution was uniform,
+according to the indifference principle.
 ============================================================================================#
 
 #using Random
