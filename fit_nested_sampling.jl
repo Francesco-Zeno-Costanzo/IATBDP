@@ -1,6 +1,6 @@
 #============================================================================================
 Code for fitting data using nested sampling.
-In this case, as an example, we wanted to use the same data for the fit_plo_ran.py code
+In this case, as an example, we wanted to use the same data for the fit_pol_ran.py code
 and also the same function as a theoretical model.
 Any changes for other models are not particularly complicated.
 The calculations of the average values ​​of the parameters are calculated starting from the
