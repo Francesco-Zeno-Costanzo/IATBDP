@@ -29,5 +29,13 @@ It was always assumed that the a priori distribution was uniform according to th
 
 ## fit_nested_sampling.jl
 
-to do
+Code for fitting data using nested sampling.
+In this case, as an example, we wanted to use the same data for the fit\_pol\_ran.py code
+and also the same function as a theoretical model.
+Any changes for other models are not particularly complicated.
+The calculations of the average values ​​of the parameters are calculated starting from the
+various posterior distributions for the sole purpose of carrying out a posterior predictive
+check.
+It was always assumed that the a priori distribution was uniform,
+according to the indifference principle.
 
