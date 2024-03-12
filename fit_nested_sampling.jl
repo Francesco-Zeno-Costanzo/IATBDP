@@ -96,6 +96,69 @@ end
 #============================================================================================#
 
 @doc raw"""
+log prior
+
+Parameters
+----------
+x_data : 1darray,
+    data point on x axis \
+x_min: 1darray,
+    minimum bounds of parameter space \
+x_max: 1darray,
+    maximum bounds of parameter space \
+
+Return
+------
+log prior : float
+"""
+function log_prior(x_data::Vector, x_min::Vector, x_max::Vector)
+    return - sum(log.(x_max .- x_min))
+end
+
+#============================================================================================#
+
+@doc raw"""
+Prior
+
+Parameters
+----------
+x_data : 1darray,
+    data point on x axis \
+x_min: Float64,
+    minimum bounds of parameter space \
+x_max: Float64,
+    maximum bounds of parameter space \
+
+Return
+------
+Prior : 1darary
+"""
+function prior(x_data::Vector, x_min::Float64, x_max::Float64)
+    return (x_max .- x_min) .* rand(length(x_data)) .+ x_min
+end
+
+#============================================================================================#
+
+@doc raw"""
+Function to sample new point, we use a gaussian distribution
+
+Parameters
+----------
+x : Float64,
+    mean \
+s : Float64,
+    standard deviation \
+
+Return
+------
+proposal : float64
+"""
+function gaussian_proposal(x::Float64, s::Float64)
+    return x + randn()*s
+end
+#============================================================================================#
+
+@doc raw"""
 Sampling a new point of parameter space from
 a uniform distribution as proposal with the
 constraint to go up in likelihood
@@ -139,27 +202,32 @@ function sampling(x_data::Vector, y_data::Vector, dy::Vector, x::Vector, D::Int,
     
     # Array initialization
     new_sample = zeros(D+1)
-        
+
     while true
         
         # Loop over the components
         for i in 1:D
-            #we sample a trial variable with a gaussina distribution
-            new_sample[i] = point[i] + randn()*step[i]
+            #we sample a trial variable with a gaussian distribution
+            new_sample[i] = gaussian_proposal(point[i], step[i])
             
             # If it is out of bound...
             while new_sample[i] <= bound[2*i - 1] || new_sample[i] >= bound[2*i]
                 #...we resample the variable
-                new_sample[i] = point[i] + randn()*step[i]
+                new_sample[i] = gaussian_proposal(point[i], step[i])
             end
         end
 
         # Computation of the likelihood associated to the new point
         new_sample[D+1] = log_likelihood(x_data, y_data, dy, new_sample[1:D], D)
-        
+
+        actual_prior = log_prior(point, bound[1:2:end], bound[2:2:end])
+        new_prior    = log_prior(new_sample[1:D], bound[1:2:end], bound[2:2:end])
+        prior_ratio  = actual_prior/new_prior
+        uniform_var  = rand()
+
         reject += 1
-        # If the likelihood is greater we accept
-        if new_sample[D+1] > logLmin
+        # If the likelihood is greater we accept. The second condition is always true for uniform prior
+        if new_sample[D+1] > logLmin && uniform_var < prior_ratio
             accept += 1
             reject -= 1 # To avoind one if check
             point[1:D] = new_sample[1:D] 
@@ -275,9 +343,10 @@ function nested_sampling(x_data::Vector, y_data::Vector, dy::Vector, N::Int, D::
     # Indifference principle, the parameters' priors are uniform
     prior_sample = zeros(N, D)
     for i in 1:D
-        prior_sample[:, i] = (bound[2*i] - bound[2*i - 1]) .* rand(N) .+ bound[2*i - 1]
+        values = collect(bound[2*i - 1]:(bound[2*i] - bound[2*i - 1])/(N-1):bound[2*i])
+        prior_sample[:, i] = prior(values, bound[2*i - 1], bound[2*i])
     end
-    
+
     #initialization of the parameters' values
     grid[:, 1:D] = prior_sample
     #likelihood initialization
@@ -332,11 +401,11 @@ function nested_sampling(x_data::Vector, y_data::Vector, dy::Vector, N::Int, D::
             print("Iter = $count acceptance = $pracc logZ = $plogZ error_logZ = $error H = $pinfo \r")
         end
         
-        if count > 3
-            #break
-            if abs((logZ_list[count-1] - logZ_list[count-2])/logZ_list[count-2]) < tau
-                break
-            end
+        if count > 50000
+            break
+            #if abs((logZ_list[count-1] - logZ_list[count-2])/logZ_list[count-2]) < tau
+            #    break
+            #end
         end
     end
     
@@ -436,10 +505,10 @@ function main()
     
     # Read data
     data   = readdlm("data.txt", '\t')
-    x_data = data[2:length(b[:, 1]), 1]
-    y_data = data[2:length(b[:, 1]), 2]
+    x_data = data[2:length(data[:, 1]), 1]
+    y_data = data[2:length(data[:, 1]), 2]
     dy     = ones(length(y_data))
-    
+
     # Bound for our system:
     # Linear case:    log(Z) \simew -90
     #bound = [-9, -5, 1.5, 2.5]
@@ -496,7 +565,7 @@ function main()
         push!(p, m_p)
     end
     
-    t = minimum(x_data):0.01:maximum(x_data)
+    t = collect(minimum(x_data):0.01:maximum(x_data))
     errorbar(x_data, y_data, dy, fmt='.', label="data")
     plot(t, polynomial(p, t), 'b', label="NS fit")
     legend(loc="best")
