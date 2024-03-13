@@ -6,156 +6,21 @@ Any changes for other models are not particularly complicated.
 The calculations of the average values ​​of the parameters are calculated starting from the
 various posterior distributions for the sole purpose of carrying out a posterior predictive
 check.
-It was always assumed that the a priori distribution was uniform,
-according to the indifference principle.
 ============================================================================================#
 
-#using Random
-#using StatsBase
-#using PythonPlot
-#using Statistics
-#using DelimitedFiles
-
+#= Copy on repl at the begin
+using Random
+using StatsBase
+using PythonPlot
+using Statistics
+using DelimitedFiles
+=#
 #============================================================================================#
 
 int(x) = floor(Int, x) # int function, e.g. int(2.3) = 2
 
 #============================================================================================#
-
-@doc raw"""
-Returns a polynomial of arbitrary
-degree calculated on given points
-
-Parameters
-----------
-p : 1darray,
-    array containing the values ​​of the coefficients \
-x : 1darray,
-    data 
-
-Returns
-----------
-curve : 1darray
-    polynomial
-
-Example
--------
-julia> polinomio([0, 0, 1], [0, 1, 2, 3, 4]) # 1*x**2 + 0*x + 0
-5-element Vector{Float64}:
-  0.0
-  1.0
-  4.0
-  9.0
- 16.0
-"""
-function polynomial(p::Vector, x::Vector)
-    
-    n     = length(x)
-    curve = zeros(n)
-    num_par = length(p)
-    
-    for (j, xi) in enumerate(x)
-        pol = [p[i]*xi^(i-1) for i in 1:num_par]
-        pol = sum(pol)
-        curve[j] = pol
-    end
-    
-    return curve
-end
-
-#============================================================================================#
-   
-@doc raw"""
-log likelihood of our data
-
-Parameters
-----------
-x_data : 1darray,
-    data point on x axis \
-y_data : 1darray,
-    data point on y axis \
-dy : 1darray,
-    error on y data \
-x : 1darray, 
-    array of parameters \
-D : int, 
-    dimension of parameter space \
-
-Return
-------
-likelihood : float, 
-    log likelihood
-"""
-function log_likelihood(x_data::Vector, y_data::Vector, dy::Vector, x::Vector, D::Int)
-    
-    likelihood = -0.5*sum( ((y_data .- polynomial(x, x_data)) ./ dy) .^ 2)
-
-    return likelihood
-end
-
-#============================================================================================#
-
-@doc raw"""
-log prior
-
-Parameters
-----------
-x_data : 1darray,
-    data point on x axis \
-x_min: 1darray,
-    minimum bounds of parameter space \
-x_max: 1darray,
-    maximum bounds of parameter space \
-
-Return
-------
-log prior : float
-"""
-function log_prior(x_data::Vector, x_min::Vector, x_max::Vector)
-    return - sum(log.(x_max .- x_min))
-end
-
-#============================================================================================#
-
-@doc raw"""
-Prior
-
-Parameters
-----------
-x_data : 1darray,
-    data point on x axis \
-x_min: Float64,
-    minimum bounds of parameter space \
-x_max: Float64,
-    maximum bounds of parameter space \
-
-Return
-------
-Prior : 1darary
-"""
-function prior(x_data::Vector, x_min::Float64, x_max::Float64)
-    return (x_max .- x_min) .* rand(length(x_data)) .+ x_min
-end
-
-#============================================================================================#
-
-@doc raw"""
-Function to sample new point, we use a gaussian distribution
-
-Parameters
-----------
-x : Float64,
-    mean \
-s : Float64,
-    standard deviation \
-
-Return
-------
-proposal : float64
-"""
-function gaussian_proposal(x::Float64, s::Float64)
-    return x + randn()*s
-end
+# Function for sampling new point
 #============================================================================================#
 
 @doc raw"""
@@ -193,12 +58,12 @@ accept : int,
 reject : int, 
     number of moves that have been rejected \
 """
-function sampling(x_data::Vector, y_data::Vector, dy::Vector, x::Vector, D::Int, bound::Vector, step::Vector, N_mcmc::Int)
+function sampling(Log_Likelihood::Function, Log_Prior::Function, Proposal::Function,
+                  x_data::Vector, y_data::Vector, dy::Vector, x::Vector, D::Int, bounds::Vector, step::Vector, N_mcmc::Int;
+                  prior_param::Tuple=())
 
-    logLmin = x[D+1] # Worst likelihood
-    point = x[1:D]   # Point in the parameter space
-    accept = 0       # Number of accepted moves
-    reject = 0       # Number of rejected moves
+    accept = 0   # Number of accepted moves
+    reject = 0   # Number of rejected moves
     
     # Array initialization
     new_sample = zeros(D+1)
@@ -208,29 +73,28 @@ function sampling(x_data::Vector, y_data::Vector, dy::Vector, x::Vector, D::Int,
         # Loop over the components
         for i in 1:D
             #we sample a trial variable with a gaussian distribution
-            new_sample[i] = gaussian_proposal(point[i], step[i])
+            new_sample[i] = Proposal(x[i], step[i])
             
             # If it is out of bound...
-            while new_sample[i] <= bound[2*i - 1] || new_sample[i] >= bound[2*i]
+            while new_sample[i] <= bounds[2*i - 1] || new_sample[i] >= bounds[2*i]
                 #...we resample the variable
-                new_sample[i] = gaussian_proposal(point[i], step[i])
+                new_sample[i] = Proposal(x[i], step[i])
             end
         end
 
         # Computation of the likelihood associated to the new point
-        new_sample[D+1] = log_likelihood(x_data, y_data, dy, new_sample[1:D], D)
+        new_sample[D+1] = Log_Likelihood(x_data, y_data, dy, new_sample[1:D], D)
 
-        actual_prior = log_prior(point, bound[1:2:end], bound[2:2:end])
-        new_prior    = log_prior(new_sample[1:D], bound[1:2:end], bound[2:2:end])
+        actual_prior = Log_Prior(x[1:D],          bounds, prior_param...)
+        new_prior    = Log_Prior(new_sample[1:D], bounds, prior_param...)
         prior_ratio  = actual_prior/new_prior
-        uniform_var  = rand()
 
         reject += 1
         # If the likelihood is greater we accept. The second condition is always true for uniform prior
-        if new_sample[D+1] > logLmin && uniform_var < prior_ratio
+        if new_sample[D+1] > x[D+1] && rand() < prior_ratio
             accept += 1
             reject -= 1 # To avoind one if check
-            point[1:D] = new_sample[1:D] 
+            x[1:D] = new_sample[1:D]
 
             if accept > N_mcmc # ACHTUNG:
                 #===================================================
@@ -283,6 +147,8 @@ function logaddexp(x::Float64, y::Float64)
 end
 
 #============================================================================================#
+# Nested Sampling function
+#============================================================================================#
 
 @doc raw"""
 Compute evidence, information and distribution of parameters
@@ -327,31 +193,37 @@ calc : dict,
     "list_evidence"    : logZ_list \
 
 """
-function nested_sampling(x_data::Vector, y_data::Vector, dy::Vector, N::Int, D::Int, bound::Vector, N_mcmc::Int; tau::Float64=1e-6, verbose::Bool=false)
+function nested_sampling(Log_Likelihood::Function, Log_Prior::Function, Prior::Function, Proposal::Function, data_Model::Function,
+                         x_data::Vector, y_data::Vector, dy::Vector, N::Int, D::Int, bounds::Vector, N_mcmc::Int;
+                         prior_param::Tuple=(), tau::Float64=1e-6, verbose::Bool=false)
 
-    grid = zeros(N, D + 1) # grid of live points
+    grid       = zeros(N, D + 1) # Grid of live points
+    prior_mass = []              # Integration variable
+    logH_list  = []              # To store the information
+    logZ_list  = []              # To store the evidence
+    logL_list  = []              # To store the wrost likelihood
+    all_value  = []              # To store all sample for the posterior for our parameter
 
-    prior_mass = [] # Integration variable
-    logH_list  = [] # To store the information
-    logZ_list  = [] # To store the evidence
-    logL_list  = [] # To store the wrost likelihood
-    all_value  = [] # To store all sample for the posterior for our parameter
+    logH = -1e150                # ln(Information, initially 0)
+    logZ = -1e150                # ln(Evidence Z,  initially 0)
 
-    logH = -1e150 # ln(Information, initially 0)
-    logZ = -1e150 # ln(Evidence Z, initially 0)
-
-    # Indifference principle, the parameters' priors are uniform
+    # Initial value sampled from prior
     prior_sample = zeros(N, D)
     for i in 1:D
-        values = collect(bound[2*i - 1]:(bound[2*i] - bound[2*i - 1])/(N-1):bound[2*i])
-        prior_sample[:, i] = prior(values, bound[2*i - 1], bound[2*i])
+        values = collect(bounds[2*i - 1]:(bounds[2*i] - bounds[2*i - 1])/(N-1):bounds[2*i])
+        if length(prior_param) == 0
+            prior_sample[:, i] = Prior(values, bounds[2*i - 1], bounds[2*i], prior_param...)
+        else
+            param = collect(prior_param[j][i] for j in 1:length(prior_param))
+            prior_sample[:, i] = Prior(values, bounds[2*i - 1], bounds[2*i], param...)
+        end
     end
 
     #initialization of the parameters' values
     grid[:, 1:D] = prior_sample
     #likelihood initialization
     for i in 1:N
-        grid[i, D+1] = log_likelihood(x_data, y_data, dy, prior_sample[i,:], D)
+        grid[i, D+1] = Log_Likelihood(x_data, y_data, dy, prior_sample[i,:], D)
     end
     
     # Outermost interval of prior mass
@@ -383,8 +255,10 @@ function nested_sampling(x_data::Vector, y_data::Vector, dy::Vector, N::Int, D::
 
         # New sample used to replace the points we have to delete
         # A good guess for initial step size is the tipical dimension of actual sample
-        sampling_step = [std(grid[:, jj]) for jj in 1:D]
-        new_sample, acc, rej = sampling(x_data, y_data, dy, grid[Lw_idx, :], D, bound, sampling_step, N_mcmc)
+        sampling_step = [std(grid[:, jj])/sqrt(N) for jj in 1:D]
+
+        new_sample, acc, rej = sampling(Log_Likelihood, Log_Prior, Proposal, x_data, y_data, dy, grid[Lw_idx, :], D, bounds, sampling_step, N_mcmc, prior_param=prior_param)
+
         accepted += acc # We refresh the total accepted steps
         rejected += rej # We refresh the total rejected steps
 
@@ -392,33 +266,20 @@ function nested_sampling(x_data::Vector, y_data::Vector, dy::Vector, N::Int, D::
         logwidth -= 1.0/N            # Interval shrinking
         
         if verbose
-            # Rounded at nc digits
-            nc    = 3 # number of digits
-            error = round(sqrt(exp(logH)/N), digits=nc)
-            pracc = round(accepted/(accepted+rejected), digits=nc)
-            plogZ = round(logZ, digits=nc)
-            pinfo = round(exp(logH), digits=nc)
-            print("Iter = $count acceptance = $pracc logZ = $plogZ error_logZ = $error H = $pinfo \r")
+            print("Iter = $count acceptance = $(round(accepted/(accepted+rejected), digits=3)) logZ = $(round(logZ, digits=3)) error_logZ = $(round(sqrt(exp(logH)/N), digits=3)) H = $(round(exp(logH), digits=3)) \r")
         end
         
-        if count > 50000
-            break
-            #if abs((logZ_list[count-1] - logZ_list[count-2])/logZ_list[count-2]) < tau
-            #    break
-            #end
+        if count > 3
+            #break
+            if abs((logZ_list[count-1] - logZ_list[count-2])/logZ_list[count-2]) < tau
+                break
+            end
         end
     end
     
-    # We want that the last line stay printed
-    nc    = 3 # number of digits
-    error = round(sqrt(exp(logH)/N), digits=nc)
-    pracc = round(accepted/(accepted+rejected), digits=nc)
-    plogZ = round(logZ, digits=nc)
-    pinfo = round(exp(logH), digits=nc)
-    println("Iter = $count acceptance = $pracc logZ = $plogZ error_logZ = $error H = $pinfo")
-    
     # Evidence error
     error = sqrt(exp(logH)/N)
+    println("Iter = $count acceptance = $(round(accepted/(accepted+rejected), digits=3)) logZ = $(round(logZ, digits=3)) error_logZ = $(round(error, digits=3)) H = $(round(exp(logH), digits=3)) \r")
     
     # Compute posterior distributions
     N_resample = int(1e5)
@@ -449,7 +310,6 @@ function nested_sampling(x_data::Vector, y_data::Vector, dy::Vector, N::Int, D::
     return calc
 end
 
-#============================================================================================#
 
 @doc raw"""
 Plot of posterior vs prior for all parameters
@@ -492,8 +352,65 @@ function plot_hist_par(prior, posterior, D, bound; save=false)
 end
 
 #============================================================================================#
+# Main code
+#============================================================================================#
 
 function main()
+
+    function polynomial(p::Vector, x::Vector)
+        # julia> polynomial([0, 0, 1], [0, 1, 2, 3, 4]) # 1*x**2 + 0*x + 0
+        # 5-element Vector{Float64}:
+        # 0.0
+        # 1.0
+        # 4.0
+        # 9.0
+        # 16.0
+        curve = zeros(length(x))
+
+        for (j, xi) in enumerate(x)
+            pol = [p[i]*xi^(i-1) for i in 1:length(p)]
+            pol = sum(pol)
+            curve[j] = pol
+        end
+
+        return curve
+    end
+    #============================================================================================#
+    function log_likelihood(x_data::Vector, y_data::Vector, dy::Vector, x::Vector, D::Int)
+        return -0.5*sum( ((y_data .- polynomial(x, x_data)) ./ dy) .^ 2)
+    end
+    #============================================================================================#
+    function uniform_log_prior(x_data::Vector, bounds::Vector)
+        return - sum(log.(bounds[2:2:end] .- bounds[1:2:end]))
+    end
+    #============================================================================================#
+    function gaussian_log_prior(x_data::Vector, bounds::Vector, mu::Vector, sig::Vector)
+        return -0.5 * sum(log.(2 .* pi .* sig .^ 2) .- ((x_data .- mu) .^ 2 ./ sig .^ 2))
+    end
+    #============================================================================================#
+    function uniform_prior(x_data::Vector, x_min::Float64, x_max::Float64)
+        return (x_max .- x_min) .* rand(length(x_data)) .+ x_min
+    end
+    #============================================================================================#
+    function gaussian_prior(x_data::Vector, x_min::Float64, x_max::Float64, mu::Float64, sig::Float64)
+
+        p = zeros(length(x_data))
+
+        for i in 1:length(x_data)
+            p[i] = mu + randn() * sig
+            # If it is out of bound...
+            while p[i] <= x_min || p[i] >= x_max
+                #...we resample the variable
+                p[i] = mu + randn() * sig
+            end
+        end
+        return p
+    end
+    #============================================================================================#
+    function gaussian_proposal(x::Float64, s::Float64)
+        return x + randn()*s
+    end
+    #============================================================================================#
 
     Random.seed!(69420)
     
@@ -510,17 +427,23 @@ function main()
     dy     = ones(length(y_data))
 
     # Bound for our system:
-    # Linear case:    log(Z) \simew -90
-    #bound = [-9, -5, 1.5, 2.5]
-    # Quadratic case: log(Z) \simeq -16
-    bound = [-2, 2, -0.5, 0.5, 0, 0.2]
-    # Cubic case:     log(Z) \simeq -19
-    #bound = [-0.5, 1.5, -0.2, 0.2, 0, 0.1, -0.05, 0.05]
+    #bounds = [-9, -5, 1.5, 2.5]
+    #mu     = [-7.0, 1.98]
+    #sig    = [0.1, 0.01]
+
+    bounds = [-2, 2, -0.5, 0.5, 0, 0.2]
+    #mu     = [0.0, 0.0, 0.1]
+    #sig    = [0.1, 0.1, 0.01]
+
+    #bounds = [-0.5, 1.5, -0.2, 0.2, 0, 0.1, -0.05, 0.05]
     
     # Dimension of our parameter space
-    D = int(length(bound)/2)
+    D = int(length(bounds)/2)
 
-    NS = nested_sampling(x_data, y_data, dy, N, D, bound, N_mcmc, verbose=true)
+    NS = nested_sampling(log_likelihood, uniform_log_prior, uniform_prior, gaussian_proposal, polynomial,
+                         x_data, y_data, dy, N, D, bounds, N_mcmc, verbose=true)
+    #NS = nested_sampling(log_likelihood, gaussian_log_prior, gaussian_prior, gaussian_proposal, polynomial,
+    #                     x_data, y_data, dy, N, D, bounds, N_mcmc, prior_param=(mu, sig), verbose=true)
 
     evidence        = NS["evidence"]
     error_evidence  = NS["error_lZ"]
@@ -541,7 +464,7 @@ function main()
     acceptance = acc/(acc+rej)
     println("Acceptance = $acceptance")
 
-    plot_hist_par(prior_param, posterior_param, D, bound, save=false)
+    plot_hist_par(prior_param, posterior_param, D, bounds, save=false)
     
     #===================== PLOT =====================#
     
