@@ -13,7 +13,8 @@ using Random
 using StatsBase
 using PythonPlot
 using Statistics
-using DelimitedFiles
+using FileIO
+using JLD2
 =#
 #============================================================================================#
 
@@ -30,6 +31,12 @@ constraint to go up in likelihood
 
 Parameters
 ----------
+Log_Likelihood : Function,
+    function to maximize \
+Log_Prior : Function,
+    log of prior distribution \
+Proposal : Function,
+    function to sample a new point \
 x_data : 1darray,
     data point on x axis \
 y_data : 1darray,
@@ -155,6 +162,16 @@ Compute evidence, information and distribution of parameters
 
 Parameters
 ----------
+Log_Likelihood : Function,
+    function to maximize \
+Log_Prior : Function,
+    log of prior distribution \
+Prior : Function,
+    function to create the initial data sampled from prior \
+Proposal : Function,
+    function to sample a new point \
+data_Model : Function,
+    function for fit data \
 x_data : 1darray,
     data point on x axis \
 y_data : 1darray,
@@ -169,12 +186,16 @@ bound: float,
     bounds of parameter space \
 N_mcmc : int, 
     number of montecarlo steps \
-tau : float, 
+prior_param : tuple, default
+    extra argumente to pass at prior and log prior
+tau : float, optional, dafult 1e-6
     tollerance, the run stops when the 
     variation of evidence is smaller than tau \
 verbose : bool, optional, dafult false, 
     if True some information are printed during
-    the execution to see what is happening
+    the execution to see what is happening \
+save_file : bool, optional, default false
+    if true the output is salved on a file
 
 Return
 ------
@@ -195,7 +216,7 @@ calc : dict,
 """
 function nested_sampling(Log_Likelihood::Function, Log_Prior::Function, Prior::Function, Proposal::Function, data_Model::Function,
                          x_data::Vector, y_data::Vector, dy::Vector, N::Int, D::Int, bounds::Vector, N_mcmc::Int;
-                         prior_param::Tuple=(), tau::Float64=1e-6, verbose::Bool=false)
+                         prior_param::Tuple=(), tau::Float64=1e-6, verbose::Bool=false, save_file::Bool=false)
 
     grid       = zeros(N, D + 1) # Grid of live points
     prior_mass = []              # Integration variable
@@ -307,6 +328,10 @@ function nested_sampling(Log_Likelihood::Function, Log_Prior::Function, Prior::F
             "list_evidence"    => logZ_list
     )
 
+    if save_file
+        save("Result_uni.jld2", calc)
+    end
+
     return calc
 end
 
@@ -322,12 +347,10 @@ posterior : 2darray,
     matrix which contains the posterior of all parameters \
 D : int, 
     dimension of the parameter space \
-bound : 1darray , 
-    bound for plot \
 save : bool, optional, dafult false, 
     if True all plots are saved in the current directory without being shown on the screen
 """
-function plot_hist_par(prior, posterior, D, bound; save=false)
+function plot_hist_par(prior::Matrix, posterior::Matrix, D::Int; save_fig::Bool=false)
     
     for k in 1:D
        
@@ -343,7 +366,7 @@ function plot_hist_par(prior, posterior, D, bound; save=false)
         legend(loc="best")
         grid()
         
-        if save
+        if save_fig
             savefig("parametro$(k)")
             plotclose(fig)
         end
@@ -441,9 +464,9 @@ function main()
     D = int(length(bounds)/2)
 
     NS = nested_sampling(log_likelihood, uniform_log_prior, uniform_prior, gaussian_proposal, polynomial,
-                         x_data, y_data, dy, N, D, bounds, N_mcmc, verbose=true)
+                         x_data, y_data, dy, N, D, bounds, N_mcmc, verbose=true, save_file=true)
     #NS = nested_sampling(log_likelihood, gaussian_log_prior, gaussian_prior, gaussian_proposal, polynomial,
-    #                     x_data, y_data, dy, N, D, bounds, N_mcmc, prior_param=(mu, sig), verbose=true)
+    #                     x_data, y_data, dy, N, D, bounds, N_mcmc, prior_param=(mu, sig), verbose=true, save_file=true)
 
     evidence        = NS["evidence"]
     error_evidence  = NS["error_lZ"]
@@ -457,14 +480,14 @@ function main()
     log_information = NS["log_information"]
     list_evidence   = NS["list_evidence"]
 
-    println("Evidence sampling    = $evidence +- $error_evidence")
+    println("Evidence sampling    = $(round(evidence, digits=3)) +- $(round(error_evidence, digits=3))")
 
     println("Number of iterations = $number_iter")
 
     acceptance = acc/(acc+rej)
-    println("Acceptance = $acceptance")
+    println("Acceptance = $(round(acceptance, digits=3))")
 
-    plot_hist_par(prior_param, posterior_param, D, bounds, save=false)
+    plot_hist_par(prior_param, posterior_param, D, save=false)
     
     #===================== PLOT =====================#
     
@@ -483,9 +506,10 @@ function main()
     
     p = []
     for i in 1:D # compute mean value of each posterior
-        m_p = sum(posterior_param[:, i])/length(posterior_param[:, i])
-        println("$i-th parameter = $m_p")
-        push!(p, m_p)
+        m_p = mean(posterior_param[:, i])
+        s_p = std(posterior_param[:, i])/sqrt(N)
+        println("$i-th parameter = $(round(m_p, digits=5)) +- $(round(s_p, digits=5))")
+        push!(p_u, m_p)
     end
     
     t = collect(minimum(x_data):0.01:maximum(x_data))
