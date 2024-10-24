@@ -9,6 +9,7 @@ check.
 ============================================================================================#
 
 #= Copy on repl at the begin
+using DelimitedFiles
 using Random
 using StatsBase
 using PythonPlot
@@ -455,18 +456,18 @@ function main()
     #sig    = [0.1, 0.01]
 
     bounds = [-2, 2, -0.5, 0.5, 0, 0.2]
-    #mu     = [0.0, 0.0, 0.1]
-    #sig    = [0.1, 0.1, 0.01]
+    mu     = [0.0, 0.0, 0.1]
+    sig    = [0.1, 0.1, 0.01]
 
     #bounds = [-0.5, 1.5, -0.2, 0.2, 0, 0.1, -0.05, 0.05]
     
     # Dimension of our parameter space
     D = int(length(bounds)/2)
 
-    NS = nested_sampling(log_likelihood, uniform_log_prior, uniform_prior, gaussian_proposal, polynomial,
-                         x_data, y_data, dy, N, D, bounds, N_mcmc, verbose=true, save_file=true)
-    #NS = nested_sampling(log_likelihood, gaussian_log_prior, gaussian_prior, gaussian_proposal, polynomial,
-    #                     x_data, y_data, dy, N, D, bounds, N_mcmc, prior_param=(mu, sig), verbose=true, save_file=true)
+    #NS = nested_sampling(log_likelihood, uniform_log_prior, uniform_prior, gaussian_proposal, polynomial,
+    #                     x_data, y_data, dy, N, D, bounds, N_mcmc, verbose=true, save_file=true)
+    NS = nested_sampling(log_likelihood, gaussian_log_prior, gaussian_prior, gaussian_proposal, polynomial,
+                         x_data, y_data, dy, N, D, bounds, N_mcmc, prior_param=(mu, sig), verbose=true, save_file=true)
 
     evidence        = NS["evidence"]
     error_evidence  = NS["error_lZ"]
@@ -487,7 +488,7 @@ function main()
     acceptance = acc/(acc+rej)
     println("Acceptance = $(round(acceptance, digits=3))")
 
-    plot_hist_par(prior_param, posterior_param, D, save=false)
+    plot_hist_par(prior_param, posterior_param, D, save_fig=false)
     
     #===================== PLOT =====================#
     
@@ -509,7 +510,7 @@ function main()
         m_p = mean(posterior_param[:, i])
         s_p = std(posterior_param[:, i])/sqrt(N)
         println("$i-th parameter = $(round(m_p, digits=5)) +- $(round(s_p, digits=5))")
-        push!(p_u, m_p)
+        push!(p, m_p)
     end
     
     t = collect(minimum(x_data):0.01:maximum(x_data))
